@@ -16,7 +16,7 @@ This guide provides step-by-step instructions for setting up Hotspot-Starter.
 ### Step 1: Download or Clone
 
 ```powershell
-git clone https://github.com/YOUR_USERNAME/Hotspot-Starter.git
+git clone https://github.com/Shuruyue/Hotspot-Starter.git
 ```
 
 **Recommended locations:**

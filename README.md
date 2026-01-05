@@ -32,7 +32,7 @@
 
 ```powershell
 # Clone the repository
-git clone https://github.com/YOUR_USERNAME/Hotspot-Starter.git
+git clone https://github.com/Shuruyue/Hotspot-Starter.git
 cd Hotspot-Starter
 
 # Toggle hotspot (on to off or off to on)
