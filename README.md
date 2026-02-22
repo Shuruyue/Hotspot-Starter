@@ -8,10 +8,10 @@
 [![Windows](https://img.shields.io/badge/Windows-10%20%7C%2011-0078D6?logo=windows)](https://www.microsoft.com/windows)
 [![PowerShell](https://img.shields.io/badge/PowerShell-5.1%2B-5391FE?logo=powershell&logoColor=white)](https://docs.microsoft.com/powershell/)
 
-[Features](#features) •
-[Quick Start](#quick-start) •
-[Installation](#installation) •
-[Documentation](#documentation) •
+[Features](#features) |
+[Quick Start](#quick-start) |
+[Installation](#installation) |
+[Documentation](#documentation) |
 [Contributing](#contributing)
 
 </div>
@@ -75,17 +75,17 @@ To remove:
 
 ```
 Hotspot-Starter/
-├── scripts/
-│   └── Toggle-Hotspot.ps1       # Main hotspot control script
-├── docs/
-│   ├── INSTALLATION.md          # Detailed setup guide
-│   └── TROUBLESHOOTING.md       # Common issues and solutions
-├── logs/                        # Runtime logs (auto-created)
-├── Start-Hotspot.bat            # Quick launcher (double-click)
-├── Install-ScheduledTask.ps1    # Task Scheduler setup
-├── SECURITY.md                  # Security policy
-├── CONTRIBUTING.md              # Contribution guidelines
-└── LICENSE                      # MIT License
++- scripts/
+|  +- Toggle-Hotspot.ps1       # Main hotspot control script
++- docs/
+|  +- INSTALLATION.md          # Detailed setup guide
+|  `- TROUBLESHOOTING.md       # Common issues and solutions
++- logs/                       # Runtime logs (auto-created)
++- Start-Hotspot.bat           # Quick launcher (double-click)
++- Install-ScheduledTask.ps1   # Task Scheduler setup
++- SECURITY.md                 # Security policy
++- CONTRIBUTING.md             # Contribution guidelines
+`- LICENSE                     # MIT License
 ```
 
 ## Documentation

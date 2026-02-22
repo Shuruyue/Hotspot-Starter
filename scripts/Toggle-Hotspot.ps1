@@ -15,7 +15,7 @@
 
 .EXAMPLE
     .\Toggle-Hotspot.ps1
-    Toggles the hotspot state (on→off or off→on)
+    Toggles the hotspot state (on->off or off->on)
 
 .EXAMPLE
     .\Toggle-Hotspot.ps1 -Action Start
@@ -39,6 +39,8 @@ $ScriptRoot = $PSScriptRoot
 $LogDir = Join-Path (Split-Path $ScriptRoot -Parent) "logs"
 $LogFile = Join-Path $LogDir "hotspot.log"
 $MaxLogAgeDays = 7
+$AsTaskGenericMethod = $null
+$AsTaskActionMethod = $null
 #endregion
 
 #region Logging Functions
@@ -101,6 +103,18 @@ function Clear-OldLogs {
 }
 #endregion
 
+#region Privilege Helpers
+function Test-IsAdministrator {
+    <#
+    .SYNOPSIS
+        Returns true when running with elevated administrator privileges.
+    #>
+    $currentIdentity = [Security.Principal.WindowsIdentity]::GetCurrent()
+    $principal = [Security.Principal.WindowsPrincipal]::new($currentIdentity)
+    return $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+}
+#endregion
+
 #region WinRT Async Helpers
 function Initialize-WinRT {
     <#
@@ -110,6 +124,24 @@ function Initialize-WinRT {
     try {
         [Windows.System.UserProfile.LockScreen, Windows.System.UserProfile, ContentType=WindowsRuntime] | Out-Null
         Add-Type -AssemblyName System.Runtime.WindowsRuntime
+        $script:AsTaskGenericMethod = ([System.WindowsRuntimeSystemExtensions].GetMethods() |
+            Where-Object {
+                $_.Name -eq 'AsTask' -and
+                $_.GetParameters().Count -eq 1 -and
+                $_.GetParameters()[0].ParameterType.Name -eq 'IAsyncOperation`1'
+            } |
+            Select-Object -First 1)
+        $script:AsTaskActionMethod = ([System.WindowsRuntimeSystemExtensions].GetMethods() |
+            Where-Object {
+                $_.Name -eq 'AsTask' -and
+                $_.GetParameters().Count -eq 1 -and
+                -not $_.IsGenericMethod
+            } |
+            Select-Object -First 1)
+
+        if ($null -eq $script:AsTaskGenericMethod -or $null -eq $script:AsTaskActionMethod) {
+            throw "Unable to resolve required WinRT AsTask method(s)."
+        }
         Write-Log -Level "DEBUG" -Message "WinRT assemblies loaded successfully"
     } catch {
         Write-Log -Level "ERROR" -Message "Failed to load WinRT assemblies: $($_.Exception.Message)"
@@ -129,15 +161,12 @@ function Invoke-Await {
         [Parameter(Mandatory = $true)]
         [Type]$ResultType
     )
-    
-    $asTaskGeneric = ([System.WindowsRuntimeSystemExtensions].GetMethods() | 
-        Where-Object { 
-            $_.Name -eq 'AsTask' -and 
-            $_.GetParameters().Count -eq 1 -and 
-            $_.GetParameters()[0].ParameterType.Name -eq 'IAsyncOperation`1' 
-        })[0]
-    
-    $asTask = $asTaskGeneric.MakeGenericMethod($ResultType)
+
+    if ($null -eq $script:AsTaskGenericMethod) {
+        throw "WinRT async helper is not initialized."
+    }
+
+    $asTask = $script:AsTaskGenericMethod.MakeGenericMethod($ResultType)
     $netTask = $asTask.Invoke($null, @($WinRtTask))
     $netTask.Wait(-1) | Out-Null
     return $netTask.Result
@@ -152,15 +181,12 @@ function Invoke-AwaitAction {
         [Parameter(Mandatory = $true)]
         $WinRtAction
     )
-    
-    $asTask = ([System.WindowsRuntimeSystemExtensions].GetMethods() | 
-        Where-Object { 
-            $_.Name -eq 'AsTask' -and 
-            $_.GetParameters().Count -eq 1 -and 
-            -not $_.IsGenericMethod 
-        })[0]
-    
-    $netTask = $asTask.Invoke($null, @($WinRtAction))
+
+    if ($null -eq $script:AsTaskActionMethod) {
+        throw "WinRT async helper is not initialized."
+    }
+
+    $netTask = $script:AsTaskActionMethod.Invoke($null, @($WinRtAction))
     $netTask.Wait(-1) | Out-Null
 }
 #endregion
@@ -272,6 +298,12 @@ function Stop-MobileHotspot {
 try {
     Write-Log -Level "INFO" -Message "========== Hotspot Script Started =========="
     Write-Log -Level "INFO" -Message "Action requested: $Action"
+
+    if (-not (Test-IsAdministrator)) {
+        Write-Log -Level "ERROR" -Message "Administrator privileges are required to manage mobile hotspot."
+        Write-Output "Please run this script as Administrator."
+        exit 1
+    }
     
     # Clean up old logs
     Clear-OldLogs
@@ -294,6 +326,9 @@ try {
             if ($currentState -eq "On") {
                 Write-Log -Level "WARN" -Message "Hotspot is already on"
                 Write-Output "Hotspot is already running"
+            } elseif ($currentState -eq "InTransition") {
+                Write-Log -Level "WARN" -Message "Hotspot is in transition. Retry in a few seconds."
+                Write-Output "Hotspot is currently transitioning. Please try again shortly."
             } else {
                 Start-MobileHotspot -TetheringManager $tetheringManager
             }
@@ -302,12 +337,18 @@ try {
             if ($currentState -eq "Off") {
                 Write-Log -Level "WARN" -Message "Hotspot is already off"
                 Write-Output "Hotspot is already stopped"
+            } elseif ($currentState -eq "InTransition") {
+                Write-Log -Level "WARN" -Message "Hotspot is in transition. Retry in a few seconds."
+                Write-Output "Hotspot is currently transitioning. Please try again shortly."
             } else {
                 Stop-MobileHotspot -TetheringManager $tetheringManager
             }
         }
         "Toggle" {
-            if ($currentState -eq "On") {
+            if ($currentState -eq "InTransition") {
+                Write-Log -Level "WARN" -Message "Hotspot is in transition. Toggle skipped."
+                Write-Output "Hotspot is currently transitioning. Please try again shortly."
+            } elseif ($currentState -eq "On") {
                 Stop-MobileHotspot -TetheringManager $tetheringManager
             } else {
                 Start-MobileHotspot -TetheringManager $tetheringManager

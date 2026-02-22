@@ -30,6 +30,8 @@ param(
 $TaskName = "Hotspot-Starter"
 $TaskDescription = "Automatically starts the mobile hotspot when user logs on"
 $ScriptPath = Join-Path $PSScriptRoot "scripts\Toggle-Hotspot.ps1"
+$CurrentUser = [Security.Principal.WindowsIdentity]::GetCurrent().Name
+$PowerShellExe = Join-Path $PSHOME "powershell.exe"
 
 function Write-Status {
     param([string]$Message, [string]$Type = "INFO")
@@ -87,18 +89,18 @@ else {
         }
 
         # Create trigger: At logon with 30-second delay
-        $trigger = New-ScheduledTaskTrigger -AtLogOn -User $env:USERNAME
+        $trigger = New-ScheduledTaskTrigger -AtLogOn -User $CurrentUser
         $trigger.Delay = "PT30S"  # 30 second delay
 
         # Create action: Run PowerShell script
         $action = New-ScheduledTaskAction `
-            -Execute "powershell.exe" `
-            -Argument "-ExecutionPolicy Bypass -WindowStyle Hidden -File `"$ScriptPath`" -Action Start" `
+            -Execute $PowerShellExe `
+            -Argument "-NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$ScriptPath`" -Action Start" `
             -WorkingDirectory $PSScriptRoot
 
         # Create principal: Run with highest privileges
         $principal = New-ScheduledTaskPrincipal `
-            -UserId $env:USERNAME `
+            -UserId $CurrentUser `
             -RunLevel Highest `
             -LogonType Interactive
 
@@ -123,6 +125,7 @@ else {
         Write-Status ""
         Write-Status "Configuration Summary:" -Type "INFO"
         Write-Status "  - Task Name    : $TaskName"
+        Write-Status "  - User         : $CurrentUser"
         Write-Status "  - Trigger      : At user logon (30s delay)"
         Write-Status "  - Privileges   : Run with highest privileges"
         Write-Status "  - Script       : $ScriptPath"

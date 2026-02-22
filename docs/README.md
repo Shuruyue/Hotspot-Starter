@@ -19,5 +19,5 @@ This folder contains detailed documentation for Hotspot-Starter.
 ## Need Help?
 
 1. Check [TROUBLESHOOTING.md](TROUBLESHOOTING.md) first
-2. Search [existing issues](../../issues)
+2. Search [existing issues](https://github.com/Shuruyue/Hotspot-Starter/issues)
 3. Open a new issue with the `question` label
